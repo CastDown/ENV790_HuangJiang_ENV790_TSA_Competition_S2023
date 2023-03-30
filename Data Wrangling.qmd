@@ -1,6 +1,9 @@
-\-\-- title: "Data Loading and Wrangling"
+\-\
+-- title: "Data Loading and Wrangling"
 
-author: "Tony Jiang & Kassie Huang" execute: echo: false \-\--
+author: "Tony Jiang & Kassie Huang" execute: echo: false 
+\-\
+--
 
 Library necessary packages
 
@@ -134,10 +137,14 @@ create a time series with all three data
 
 ```{r}
 
+# combine three processed series together 
 combined <- cbind(load_processed[,2], humidity_day_avg[,1], temp_day_avg[,1])
+
+# rename columns to make it look nice
 colnames(combined) <- c("load", "humidity", "temp")
 
-ts_combined <- combined %>% 
-  ts(start = c(2005,1), frequency = 365) %>% 
-  msts(seasonal.periods = c(7, 365.25/12))
+# create a time series with two frequency, weeks (7) and days (365.25).
+# so we can differentiate weekdays from weekends when modeling
+ts_combined <- combined %>%
+  msts(seasonal.periods = c(7, 365.25), start = c(2005, 1, 1))
 ```
