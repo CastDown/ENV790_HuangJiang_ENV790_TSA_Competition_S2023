@@ -129,3 +129,15 @@ remove(temp_interim)
 # check for missing value again
 summary(temp_day_avg)
 ```
+
+create a time series with all three data
+
+```{r}
+
+combined <- cbind(load_processed[,2], humidity_day_avg[,1], temp_day_avg[,1])
+colnames(combined) <- c("load", "humidity", "temp")
+
+ts_combined <- combined %>% 
+  ts(start = c(2005,1), frequency = 365) %>% 
+  msts(seasonal.periods = c(7, 365.25/12))
+```
