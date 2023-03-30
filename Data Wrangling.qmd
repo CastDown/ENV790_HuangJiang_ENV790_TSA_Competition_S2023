@@ -14,13 +14,14 @@ library(readxl)
 library(tidyverse)
 library(lubridate)
 library(zoo)
+library(here)
 ```
 
 load three datasets into R
 
 ```{r}
 #| warning: false
-setwd("/Users/jiangliwei/Documents/GitHub/ENV790_HuangJiang_ENV790_TSA_Competition_S2023")
+setwd(here())
 load_original <- read_xlsx(path = "./Data/load.xlsx", col_names = TRUE)
 humidity_original <- read_xlsx("./Data/relative_humidity.xlsx", col_names = TRUE)
 temp_original <- read_xlsx("./Data/temperature.xlsx", col_names = TRUE)
