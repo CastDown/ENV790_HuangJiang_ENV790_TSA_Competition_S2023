@@ -1,0 +1,131 @@
+\-\-- title: "Data Loading and Wrangling"
+
+author: "Tony Jiang & Kassie Huang" execute: echo: false \-\--
+
+Library necessary packages
+
+```{r}
+#| warning: false
+#| message: false
+library(readxl)
+library(tidyverse)
+library(lubridate)
+library(zoo)
+```
+
+load three datasets into R
+
+```{r}
+#| warning: false
+setwd("/Users/jiangliwei/Documents/GitHub/ENV790_HuangJiang_ENV790_TSA_Competition_S2023")
+load_original <- read_xlsx(path = "./Data/load.xlsx", col_names = TRUE)
+humidity_original <- read_xlsx("./Data/relative_humidity.xlsx", col_names = TRUE)
+temp_original <- read_xlsx("./Data/temperature.xlsx", col_names = TRUE)
+
+```
+
+Process load dataset
+
+```{r}
+# check the dataset, especially types of each column and missing values
+summary(load_original) # we have missing values at h2, need to fix this
+
+# using local mean to fill the missing values
+load_original[,4] <- na.aggregate(load_original[,4], na.rm = TRUE)
+
+# acquire the number of columns
+load_colno <- load_original %>% ncol()
+
+# get the mean of the load of each day 
+load_avg <- rowMeans(load_original[, 3:load_colno])
+
+# combine date and the mean vector to get a new data set
+load_processed <- load_original[,2] %>% 
+  mutate(load_avg) %>% 
+  as.data.frame()
+
+# check for missing value again
+summary(load_processed)
+```
+
+Process the humidity data
+
+```{r}
+# check the dataset, especially types of each column and missing values
+summary(humidity_original) # no missing values
+
+# acquire the number of columns
+humidity_colno <- humidity_original %>% ncol()
+
+# get the hourly mean of the humidity
+humidity_hr_avg <- rowMeans(humidity_original[, 3:humidity_colno])
+
+# create a interim dataframe to store hourly means
+humidity_interim <- humidity_original$date %>% 
+  as.numeric() %>% 
+  as.data.frame() %>% 
+  mutate(humidity_hr_avg)
+
+#rename columns
+colnames(humidity_interim) <- c("date","humidity_hr_avg")
+
+# get the new dataset with daily average of humidity
+humidity_day_avg <- humidity_interim %>% 
+  aggregate(humidity_hr_avg ~ date, mean) %>% 
+  as.data.frame()
+
+# replace a normal date column with the numeric date in the dataset
+humidity_day_avg <- humidity_day_avg[,2] %>% 
+  as.data.frame() %>% 
+  mutate(load_original[,2]) %>% 
+  as.data.frame()
+
+colnames(humidity_day_avg) <- c("humidity_day_avg", "date")
+
+# drop useless data 
+remove(humidity_interim)
+
+# check for missing value again
+summary(humidity_day_avg)
+```
+
+Process the temperature data
+
+```{r}
+# check the dataset, especially types of each column and missing values
+summary(temp_original) # no missing values
+
+# acquire the number of columns
+temp_colno <- temp_original %>% ncol()
+
+# get the hourly mean of the humidity
+temp_hr_avg <- rowMeans(temp_original[, 3:temp_colno])
+
+# create a interim dataframe to store hourly means
+temp_interim <- temp_original$date %>% 
+  as.numeric() %>% 
+  as.data.frame() %>% 
+  mutate(temp_hr_avg)
+
+#rename columns
+colnames(temp_interim) <- c("date","humidity_hr_avg")
+
+# get the new dataset with daily average of humidity
+temp_day_avg <- temp_interim %>% 
+  aggregate(temp_hr_avg ~ date, mean) %>% 
+  as.data.frame()
+
+# replace a normal date column with the numeric date in the dataset
+temp_day_avg <- temp_day_avg[,2] %>% 
+  as.data.frame() %>% 
+  mutate(load_original[,2]) %>% 
+  as.data.frame()
+
+colnames(temp_day_avg) <- c("humidity_day_avg", "date")
+
+# drop useless data 
+remove(temp_interim)
+
+# check for missing value again
+summary(temp_day_avg)
+```
