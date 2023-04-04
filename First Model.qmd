@@ -1,0 +1,211 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+\-\
+-- title: "First Model"
+
+author: "Tony Jiang & Kassie Huang" execute: echo: false 
+\-\
+--
+
+Library necessary packages
+
+```{r}
+#| warning: false
+#| message: false
+library(readxl)
+library(tidyverse)
+library(lubridate)
+library(zoo)
+library(here)
+library(forecast)
+```
+
+load three datasets into R
+
+```{r}
+#| warning: false
+setwd(here())
+load_original <- read_xlsx(path = "./Data/load.xlsx", col_names = TRUE)
+humidity_original <- read_xlsx("./Data/relative_humidity.xlsx", col_names = TRUE)
+temp_original <- read_xlsx("./Data/temperature.xlsx", col_names = TRUE)
+
+```
+
+Process load dataset
+
+```{r}
+# check the dataset, especially types of each column and missing values
+summary(load_original) # we have missing values at h2, need to fix this
+
+# using local mean to fill the missing values
+load_original[,4] <- na.aggregate(load_original[,4], na.rm = TRUE)
+
+# acquire the number of columns
+load_colno <- load_original %>% ncol()
+
+# get the mean of the load of each day 
+load_avg <- rowMeans(load_original[, 3:load_colno])
+
+# combine date and the mean vector to get a new data set
+load_processed <- load_original[,2] %>% 
+  mutate(load_avg) %>% 
+  as.data.frame()
+
+# check for missing value again
+summary(load_processed)
+```
+
+Process the humidity data
+
+```{r}
+# check the dataset, especially types of each column and missing values
+summary(humidity_original) # no missing values
+
+# acquire the number of columns
+humidity_colno <- humidity_original %>% ncol()
+
+# get the hourly mean of the humidity
+humidity_hr_avg <- rowMeans(humidity_original[, 3:humidity_colno])
+
+# create a interim dataframe to store hourly means
+humidity_interim <- humidity_original$date %>% 
+  as.numeric() %>% 
+  as.data.frame() %>% 
+  mutate(humidity_hr_avg)
+
+#rename columns
+colnames(humidity_interim) <- c("date","humidity_hr_avg")
+
+# get the new dataset with daily average of humidity
+humidity_day_avg <- humidity_interim %>% 
+  aggregate(humidity_hr_avg ~ date, mean) %>% 
+  as.data.frame()
+
+# replace a normal date column with the numeric date in the dataset
+humidity_day_avg <- humidity_day_avg[,2] %>% 
+  as.data.frame() %>% 
+  mutate(load_original[,2]) %>% 
+  as.data.frame()
+
+colnames(humidity_day_avg) <- c("humidity_day_avg", "date")
+
+# drop useless data 
+remove(humidity_interim)
+
+# check for missing value again
+summary(humidity_day_avg)
+```
+
+Process the temperature data
+
+```{r}
+# check the dataset, especially types of each column and missing values
+summary(temp_original) # no missing values
+
+# acquire the number of columns
+temp_colno <- temp_original %>% ncol()
+
+# get the hourly mean of the humidity
+temp_hr_avg <- rowMeans(temp_original[, 3:temp_colno])
+
+# create a interim dataframe to store hourly means
+temp_interim <- temp_original$date %>% 
+  as.numeric() %>% 
+  as.data.frame() %>% 
+  mutate(temp_hr_avg)
+
+#rename columns
+colnames(temp_interim) <- c("date","humidity_hr_avg")
+
+# get the new dataset with daily average of humidity
+temp_day_avg <- temp_interim %>% 
+  aggregate(temp_hr_avg ~ date, mean) %>% 
+  as.data.frame()
+
+# replace a normal date column with the numeric date in the dataset
+temp_day_avg <- temp_day_avg[,2] %>% 
+  as.data.frame() %>% 
+  mutate(load_original[,2]) %>% 
+  as.data.frame()
+
+colnames(temp_day_avg) <- c("humidity_day_avg", "date")
+
+# drop useless data 
+remove(temp_interim)
+
+# check for missing value again
+summary(temp_day_avg)
+```
+
+create a time series with all three data
+
+```{r}
+
+# combine three processed series together 
+combined <- cbind(load_processed[,2], humidity_day_avg[,1], temp_day_avg[,1])
+
+# rename columns to make it look nice
+colnames(combined) <- c("load", "humidity", "temp")
+
+# create a time series with two frequency, weeks (7) and days (365.25).
+# so we can differentiate weekdays from weekends when modeling
+ts_combined <- combined %>%
+  msts(seasonal.periods = c(7, 365.25), start = c(2005, 1, 1))
+```
+
+#Model 1: STL+ETS model
+For the first model(STL+ETS), we'll only be using the load data.
+```{r}
+#create a time series only for the load data
+ts_load <- combined[,1] %>%
+  msts(seasonal.periods = c(7, 365.25), start = c(2005, 1, 1))
+
+#decompose the data and plot
+ts_load %>% mstl() %>%
+  autoplot()
+
+#create a subset for training purpose
+n_forecast = 365
+ts_load_train <- subset(ts_load, end = length(ts_load)-n_forecast)
+
+#create a subset for testing purpose
+ts_load_test <- subset(ts_load, start = length(ts_load)-n_forecast)
+```
+
+Fit the model and check accuracy for further comparison
+```{r}
+#Fit and forecast STL + ETS model to data
+ETS_fit <-  stlf(ts_load_train,h=n_forecast)
+
+#Plot foresting results
+autoplot(ETS_fit) + ylab("Active Power")
+
+#Plot model + observed data
+autoplot(ts_load) +
+  autolayer(ETS_fit, series="STL + ETS",PI=FALSE) +
+  ylab("Active Power")
+
+#Check accuracy
+Model1_scores <- accuracy(ETS_fit$mean,ts_load_test)
+
+```
+
+Produce the output
+```{r}
+#forecast
+Model1_for <- stlf(ts_load,h=n_forecast)
+
+#create the date sequence
+date_for <- seq(as.Date("2011-01-01"), length.out = n_forecast, by = "day")
+
+# Create a data frame with date and load columns
+Model1_output <- data.frame(date = date_for, load = Model1_for$mean)
+
+# Write the data frame to a CSV file
+# write.csv(forecast_result, "./Output/first_model.csv", row.names = FALSE)
+
+```
+
