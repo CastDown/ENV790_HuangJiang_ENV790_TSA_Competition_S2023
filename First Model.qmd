@@ -209,3 +209,17 @@ Model1_output <- data.frame(date = date_for, load = Model1_for$mean)
 
 ```
 
+#Model 1.1: Try including just one seasonal period, i.e., 7. 
+```{r}
+#create a time series only for the load data
+ts_load_1.1 <- combined[,1] %>%
+  msts(seasonal.periods = 7, start = c(2005, 1, 1))
+
+#decompose the data and plot
+ts_load_1.1 %>% mstl() %>%
+  autoplot()
+
+#create a subset for training and testing
+ts_load_train_1.1 <- subset(ts_load_1.1, end = length(ts_load_1.1)-n_forecast)
+ts_load_test_1.1 <- subset(ts_load_1.1, start = length(ts_load_1.1)-n_forecast)
+```
