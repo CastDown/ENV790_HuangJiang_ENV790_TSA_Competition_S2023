@@ -15,6 +15,7 @@ library(tidyverse)
 library(lubridate)
 library(zoo)
 library(here)
+library(forecast)
 ```
 
 load three datasets into R
