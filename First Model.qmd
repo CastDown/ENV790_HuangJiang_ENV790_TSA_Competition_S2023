@@ -1,14 +1,12 @@
 ---
-output: html_document
+title: "First Model"
+author: "Kassie Huang & Tony Jiang"
+execute:
+  echo: false
+  output: pdf_document
 editor_options: 
   chunk_output_type: console
 ---
-\-\
--- title: "First Model"
-
-author: "Tony Jiang & Kassie Huang" execute: echo: false 
-\-\
---
 
 Library necessary packages
 
@@ -157,6 +155,7 @@ ts_combined <- combined %>%
 ```
 
 For the first model, we'll only be using the load data.
+
 ```{r}
 #create a time series only for the load data
 ts_load <- combined[,1] %>%
@@ -171,14 +170,14 @@ n_forecast = 365
 ts_load_train <- subset(ts_load, end = length(ts_load)-n_forecast)
 
 #create a subset for testing purpose
-ts_load_test <- subset(ts_load, start = length(ts_load)-n_forecast)
+ts_load_test <- subset(ts_load, start = length(ts_load)-n_forecast + 1)
 ```
 
-#Model 1: STL+ETS model
-Fit the model and check accuracy for further comparison
+#Model 1: STL+ETS model Fit the model and check accuracy for further comparison
+
 ```{r}
 #Fit and forecast STL + ETS model to data
-ETS_fit <-  stlf(ts_load_train,h=n_forecast)
+ETS_fit <-  stlf(ts_load_train, h=n_forecast)
 
 #Plot foresting results
 autoplot(ETS_fit) + ylab("Active Power")
@@ -194,6 +193,7 @@ Model1_scores <- accuracy(ETS_fit$mean,ts_load_test)
 ```
 
 Produce the output
+
 ```{r}
 #forecast
 Model1_for <- stlf(ts_load,h=n_forecast)
@@ -209,10 +209,8 @@ Model1_output <- data.frame(date = date_for, load = Model1_for$mean)
 
 ```
 
-#Model 1.1: Try including just one seasonal period, i.e., 365.25
-*Comment from Kassie: 
-1) I tried only 7, and it didn't work very well, so I changed to only try 365.25
-2) I followed Luana's code to compare RMSE just for convenience, but we could change to other metrics later
+#Model 1.1: Try including just one seasonal period, i.e., 365.25 \*Comment from Kassie: 1) I tried only 7, and it didn't work very well, so I changed to only try 365.25 2) I followed Luana's code to compare RMSE just for convenience, but we could change to other metrics later
+
 ```{r}
 #create a time series only for the load data
 ts_load_1.1 <- combined[,1] %>%
@@ -223,18 +221,24 @@ ts_load_1.1 %>% mstl() %>%
   autoplot()
 
 #create a subset for training and testing
-ts_load_train_1.1 <- subset(ts_load_1.1, end = length(ts_load_1.1)-n_forecast)
-ts_load_test_1.1 <- subset(ts_load_1.1, start = length(ts_load_1.1)-n_forecast)
+ts_load_train_1.1 <- subset(ts_load_1.1, 
+                            end = length(ts_load_1.1) - n_forecast
+                            )
+
+ts_load_test_1.1 <- subset(ts_load_1.1, 
+                           start = length(ts_load_1.1) - n_forecast + 1
+                           )
 
 #Fit and forecast STL + ETS model to data
-ETS_fit_1.1 <-  stlf(ts_load_train_1.1,h=n_forecast)
+ETS_fit_1.1 <- stlf(ts_load_train_1.1,h=n_forecast)
 
 #Plot foresting results
-autoplot(ETS_fit_1.1) + ylab("Active Power")
+autoplot(ETS_fit_1.1) + 
+  ylab("Active Power")
 
 #Plot model + observed data
 autoplot(ts_load_1.1) +
-  autolayer(ETS_fit_1.1, series="STL + ETS (season: only 365)",PI=FALSE) +
+  autolayer(ETS_fit_1.1, series= "STL + ETS (season: only 365)", PI = FALSE) +
   ylab("Active Power")
 
 #Check accuracy
@@ -245,18 +249,21 @@ Model1.1_scores <- accuracy(ETS_fit_1.1$mean,ts_load_test_1.1)
 scores <- as.data.frame(
   rbind(Model1_scores, Model1.1_scores)
   )
+
 row.names(scores) <- c("STL+ETS", "STL + ETS (season: only 365)")
+
 print(scores)
 
 #choose model with lowest RMSE
 #MAYBE
 best_model_index <- which.min(scores[,"RMSE"])
+
 cat("The best model by RMSE is:", row.names(scores[best_model_index,]))      
 
 ```
 
-#Model 2: ARIMA + FOURIER terms
-Fit the model and check accuracy for further comparison
+#Model 2: ARIMA + FOURIER terms Fit the model and check accuracy for further comparison
+
 ```{r}
 #Fit ARIMA model with fourier terms as exogenous regressors
 #TBD:if lambda=0 here
@@ -290,26 +297,32 @@ Model2_scores <- accuracy(ARIMA_Four_fit$mean,ts_load_test)
 
 ```
 
-*Note from Kassie:
-I asked GPT-4 what does lambda part do, and here's some helpful comment from it:
-1) By setting lambda = 0, you are telling the auto.arima() function to use the log-transformed data when fitting the ARIMA model. 
-2) This can help stabilize the variance and make the model more accurate, especially when dealing with data that has a multiplicative seasonality or an increasing trend.
-Still, I'm unsure if it would be better for us to include that and if so, what shall be the value. Maybe try later for 2.x models!
+\*Note from Kassie: I asked GPT-4 what does lambda part do, and here's some helpful comment from it: 1) By setting lambda = 0, you are telling the auto.arima() function to use the log-transformed data when fitting the ARIMA model. 2) This can help stabilize the variance and make the model more accurate, especially when dealing with data that has a multiplicative seasonality or an increasing trend. Still, I'm unsure if it would be better for us to include that and if so, what shall be the value. Maybe try later for 2.x models!
 
 Produce the output
+
 ```{r}
 #forecast (2 steps)
 #TBD: update the model with whole data, or still using the fitted model?
 Model2 <- auto.arima(ts_load, 
-                             seasonal=FALSE, 
+                     seasonal=FALSE, 
                              lambda=0,
                              xreg=fourier(ts_load, 
                                           K=c(2,12))
                              )
+
 Model2_for <- forecast(Model2,
-                           xreg=fourier(ts_load,
-                                        K=c(2,12),
-                                        h=365),
+                       xreg=fourier(ts_load,
+                                    K=c(2,12),
+                                    h=365),
+                           h=365
+                           ) 
+
+Model2_for_test <- forecast(Model2,
+                       lambda = Model2$lambda,
+                       xreg=fourier(ts_load,
+                                    K=c(2,12),
+                                    h=365),
                            h=365
                            ) 
 
@@ -324,11 +337,10 @@ Model2_output <- data.frame(date = date_for, load = Model2_for$mean)
 
 ```
 
-*Note from Kassie:
-I feel it's a bit strange to fit another ARIMA again here...
-Maybe check with Luana later
+\*Note from Kassie: I feel it's a bit strange to fit another ARIMA again here... Maybe check with Luana later
 
 Compare all the models so far
+
 ```{r}
 
 #Adding to the scores table
@@ -345,4 +357,3 @@ print(scores)
 best_model_index <- which.min(scores[,"RMSE"])
 cat("The best model by RMSE is:", row.names(scores[best_model_index,]))   
 ```
-

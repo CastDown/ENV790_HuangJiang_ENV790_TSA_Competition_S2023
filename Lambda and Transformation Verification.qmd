@@ -1,0 +1,95 @@
+---
+title: "Lambda and Transformation Verification"
+author: "Liwei Jiang"
+execute: 
+  echo: false
+---
+
+#### Note:
+
+This qmd is dedicated to testing hypotheses of lambda and log transformation.
+
+I copied majority of Kassie's code in file "First Model.qmd". But as we discussed over Wechat, I use source() instead of copying all data wrangling codes. And then I plot and see whether the data needs to be normalized. Then, I check whether lamda needs to be specify or we should leave R to figure out the optimal number of lamda.
+
+#### Loading Packages
+
+```{r}
+#| warning: false
+#| message: false
+library(readxl)
+library(tidyverse)
+library(lubridate)
+library(zoo)
+library(here)
+library(forecast)
+library(knitr)
+```
+
+#### Run Data Wrangling
+
+```{r child="Data Wrangling.qmd", eval=FALSE}
+
+# I failed to use source(). But I use child to make sure codes in Data Wrangling.qmd will be executed while rendering (knitting).
+# But we still need to execute the codes manually before rendering to have variables and dataframes in the environment. Kind of lame for sure
+```
+
+#### Examine the distribution of the original data
+
+```{r}
+
+# create a column in ts_combined as log(load)
+ts_combined <- ts_combined[, 1] %>% 
+  log() %>% 
+  cbind(ts_combined)
+
+# rename columns of ts_combined
+colnames(ts_combined) <- c("log(load)", "load", "humidity", "temperature")
+
+# plot log(load) and load to compare
+par(mfrow = c(1,2))
+plot(ts_combined[, 2], ylab = "Load")
+plot(ts_combined[, 1], ylab = "Log(Load)")
+
+# from the plots we can see log transformation doesn't necessarily improve the original data. 
+# So, I would recommend we stick with the original data
+
+# drop log(load)
+ts_combined <- ts_combined[, -1]
+
+```
+
+##### Test Lambda Issue
+
+```{r}
+
+# use Kassie's auto arima
+Model2 <- auto.arima(ts_load,
+                     seasonal = FALSE,
+                     lambda=0,
+                     xreg = fourier(ts_load,
+                                    K=c(2,12)
+                                    )
+                     )
+# let R find lambda by itself then compare RMSE
+model2_test <- auto.arima(ts_load,
+                          seasonal = FALSE,
+                          lambda = "auto",
+                          xreg = fourier(ts_load,
+                                         K=c(2,12)
+                                         )
+                          )
+model2_test1 <- auto.arima(ts_load,
+                          seasonal = FALSE,
+                          xreg = fourier(ts_load,
+                                         K=c(2,12)
+                                         )
+                          )
+
+accuracy(Model2_for$fitted, ts_load_train) 
+
+accuracy(model2_test$fitted, ts_load_train) 
+
+accuracy(model2_test1$fitted, ts_load_train) 
+
+# without lambda has a lower RMSE, so maybe we don't need to include lambda in our model
+```

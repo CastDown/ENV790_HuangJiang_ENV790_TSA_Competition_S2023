@@ -1,9 +1,9 @@
-\-\
--- title: "Data Loading and Wrangling"
-
-author: "Tony Jiang & Kassie Huang" execute: echo: false 
-\-\
---
+---
+title: "Data Loading and Wrangling"
+author: "Tony Jiang & Kassie Huang" 
+execute:
+  echo: false
+---
 
 Library necessary packages
 
@@ -18,7 +18,7 @@ library(here)
 library(forecast)
 ```
 
-load three datasets into R
+# load three datasets into R
 
 ```{r}
 #| warning: false
@@ -29,7 +29,7 @@ temp_original <- read_xlsx("./Data/temperature.xlsx", col_names = TRUE)
 
 ```
 
-Process load dataset
+# Process load dataset
 
 ```{r}
 # check the dataset, especially types of each column and missing values
@@ -53,7 +53,7 @@ load_processed <- load_original[,2] %>%
 summary(load_processed)
 ```
 
-Process the humidity data
+# Process the humidity data
 
 ```{r}
 # check the dataset, especially types of each column and missing values
@@ -94,7 +94,7 @@ remove(humidity_interim)
 summary(humidity_day_avg)
 ```
 
-Process the temperature data
+# Process the temperature data
 
 ```{r}
 # check the dataset, especially types of each column and missing values
@@ -135,7 +135,7 @@ remove(temp_interim)
 summary(temp_day_avg)
 ```
 
-create a time series with all three data
+# create a time series with all three data
 
 ```{r}
 
