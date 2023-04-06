@@ -19,6 +19,7 @@ library(lubridate)
 library(zoo)
 library(here)
 library(forecast)
+library(openxlsx)
 ```
 
 load three datasets into R
@@ -195,18 +196,20 @@ Model1_scores <- accuracy(ETS_fit$mean,ts_load_test)
 Produce the output
 
 ```{r}
-#forecast
-Model1_for <- stlf(ts_load,h=n_forecast)
+#forecast, only from Jan 1 to Feb 28, 2011
+Model1_for <- stlf(ts_load,h=59)
 
 #create the date sequence
-date_for <- seq(as.Date("2011-01-01"), length.out = n_forecast, by = "day")
+date_for <- seq(as.Date("2011-01-01"), length.out = 59, by = "day")
 
 # Create a data frame with date and load columns
 Model1_output <- data.frame(date = date_for, load = Model1_for$mean)
 
-# Write the data frame to a CSV file
-# write.csv(forecast_result, "./Output/first_model.csv", row.names = FALSE)
+# round the number since Kaggle requires only integers
+Model1_output$load <- round(Model1_output$load, 0)
 
+# Write the data frame to a csv file
+write.csv(Model1_output, "./Output/first_model.csv", row.names = FALSE)
 ```
 
 #Model 1.1: Try including just one seasonal period, i.e., 365.25 \*Comment from Kassie: 1) I tried only 7, and it didn't work very well, so I changed to only try 365.25 2) I followed Luana's code to compare RMSE just for convenience, but we could change to other metrics later
@@ -327,13 +330,13 @@ Model2_for_test <- forecast(Model2,
                            ) 
 
 #create the date sequence
-#date_for <- seq(as.Date("2011-01-01"), length.out = n_forecast, by = "day")
+date_for <- seq(as.Date("2011-01-01"), length.out = n_forecast, by = "day")
 
 # Create a data frame with date and load columns
 Model2_output <- data.frame(date = date_for, load = Model2_for$mean)
 
 # Write the data frame to a CSV file
-# write.csv(forecast_result, "./Output/first_model.csv", row.names = FALSE)
+write.csv(forecast_result, "./Output/first_model.csv", row.names = FALSE)
 
 ```
 
