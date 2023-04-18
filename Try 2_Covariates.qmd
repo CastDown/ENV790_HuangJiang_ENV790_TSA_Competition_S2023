@@ -1,0 +1,85 @@
+---
+title: "Second Try - Tony"
+format: pdf
+editor: visual
+---
+
+## Library Packages
+
+```{r}
+#| warning: false
+#| message: false 
+library(forecast)
+library(tidyverse)
+library(ggplot2)
+```
+
+## Use different models to try
+
+For the second try, we will try to use covariates
+
+1.  let's try ARIMA with Fourier terms
+
+```{r}
+#| echo: false
+
+# calculate the foureir terms first
+foureir_term <- ts_combined[, 1] %>% 
+  fourier(K = c(2, 12))
+
+# combine foureir terms with humidity and temperature
+covariates <- ts_combined[, c(2:3)] %>% 
+  cbind(foureir_term)
+
+covariates_train <- covariates %>% subset(end = 2191-365)
+covariates_test <- covariates %>% subset(start = 2191-365+1)
+# model with autoarima and covariates
+arima.four.cov <- ts_load_train %>% 
+  auto.arima(xreg = covariates_train)
+
+# forecast 2010 with autoarima
+forecast.arima.four.cov <- forecast(arima.four.cov, 
+                                    h = 365, 
+                                    xreg = covariates_test)
+
+# calculate its accuracy
+performance.arima.four.cov <- accuracy(forecast.arima.four.cov$mean,
+                                       ts_load_test
+                                       )
+```
+
+2.  try STL models with fourier terms and covariates
+
+```{r}
+stl.four.cov <- stlm(ts_load_train,
+                    s.window = "periodic",
+                    method = "arima",
+                    xreg = covariates_train)
+
+forecast.stl.four.cov <- forecast(stl.four.cov,
+                                  h = 365,
+                                  xreg = covariates_test)
+
+performance.stl.four.cov <- accuracy(ts_load_test, forecast.stl.four.cov$mean)
+```
+
+## Compare model performance
+
+```{r}
+scores_try2 <- performance.stl.four.cov %>% 
+  rbind(performance.arima.four.cov)
+
+row.names(scores_try2) <- c("STL with Fourier and Covariates",
+                            "SARIMA with Fourier and Covariates")
+
+best_model_index <- which.min(scores_try2[,"RMSE"])
+cat("The best model by RMSE is:", row.names(scores_try2[best_model_index,]))   
+```
+
+## Forecast with SARIMA with Covariates
+
+```{r}
+arima_four_cov_2011 <- ts_load %>% 
+  auto.arima(xreg = covariates) %>% 
+  forecast(h = 31)
+```
