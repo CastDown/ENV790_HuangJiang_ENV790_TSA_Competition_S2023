@@ -194,3 +194,21 @@ arima_four_cov_2011 <- ts_load %>%
 write.csv(arima_four_cov_2011$mean, "./Output/second_model.csv", row.names = FALSE)
 
 ```
+
+## Forecast with SARIMA with Covariates but no Fourier
+
+```{r}
+
+cov_full_nofour <- cbind(ts_combined[,2:3])
+
+cov_fore_nofour <- cbind(hum_fore$mean, tem_fore$mean)
+
+# predict! 
+arima_cov_2011 <- ts_load %>% 
+  auto.arima(xreg = cov_full_nofour) %>% 
+  forecast(h = 59,
+           xreg = cov_fore_nofour)
+
+# save results 
+write.csv(arima_four_cov_2011$mean, "./Output/third_model.csv", row.names = FALSE)
+```
