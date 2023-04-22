@@ -158,11 +158,23 @@ tem_fore <- ts_covariates[,2] %>%
                           K = 7,
                           h =31)
            )
+
+# forecast temperature
+hum_fore <- ts_covariates[,1] %>% 
+  auto.arima(xreg = fourier(ts_covariates[,1],
+                            K = 7)
+             ) %>% 
+  forecast(h = 31, 
+           xreg = fourier(ts_covariates[,1],
+                          K = 7,
+                          h =31)
+           )
 ```
 
 ## Forecast with SARIMA with Covariates
 
 ```{r}
+
 arima_four_cov_2011 <- ts_load %>% 
   auto.arima(xreg = covariates) %>% 
   forecast(h = 31)
