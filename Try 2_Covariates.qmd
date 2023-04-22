@@ -184,8 +184,11 @@ str(cov_fore)
 fourier_full <- fourier(ts_load, K = c(2, 12))
 cov_full <- cbind(ts_combined[,2:3], fourier_full)
 
+# predict! 
 arima_four_cov_2011 <- ts_load %>% 
-  auto.arima(xreg = cov_fore) %>% 
+  auto.arima(xreg = cov_full) %>% 
   forecast(h = 31,
-           xreg =)
+           xreg = cov_fore)
+
+
 ```
