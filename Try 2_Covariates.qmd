@@ -180,6 +180,9 @@ str(cov_fore)
 ## Forecast with SARIMA with Covariates
 
 ```{r}
+# covariates
+fourier_full <- fourier(ts_load, K = c(2, 12))
+cov_full <- cbind(ts_combined[,2:3], fourier_full)
 
 arima_four_cov_2011 <- ts_load %>% 
   auto.arima(xreg = cov_fore) %>% 
