@@ -115,6 +115,34 @@ row.names(humidity_scores) <- c("SARIMA", "STL")
 
 humidity_scores
   # SARIMA is better for humidity
+
+# use SARIMA with fourier and stl+ets model temperature and check which one has the best performance
+
+## SARIMA
+sarima_tem_model <- auto.arima(ts_cov_train[, 2], 
+                               xreg = fourier(ts_cov_train[, 2],
+                                              K = 7))
+sarima_tem_perf <- sarima_tem_model %>% 
+  forecast(h = 365,
+           xreg = fourier(ts_cov_train[, 2], 
+                          K = 7, 
+                          h = 365)
+           )
+
+sarima_tem_score <- accuracy(sarima_tem_perf$mean, ts_cov_test[, 2])
+
+## stl+ets 
+stl_tem_perf <- stlf(ts_cov_train[, 2], h = 365)
+
+stl_tem_score <- accuracy(stl_tem_perf$mean, ts_cov_test[, 2])
+
+temperature_scores <- rbind(sarima_tem_score, stl_tem_score)
+row.names(temperature_scores) <- c("SARIMA", "STL")
+
+temperature_scores
+
+# SARIMA is better
+
 ```
 
 ## Forecast with SARIMA with Covariates
