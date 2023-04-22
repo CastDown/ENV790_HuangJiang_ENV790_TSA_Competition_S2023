@@ -145,6 +145,21 @@ temperature_scores
 
 ```
 
+## Forecast Covariates
+
+```{r}
+# forecast temperature
+tem_fore <- ts_covariates[,2] %>% 
+  auto.arima(xreg = fourier(ts_covariates[,2],
+                            K = 7)
+             ) %>% 
+  forecast(h = 31, 
+           xreg = fourier(ts_covariates[,2],
+                          K = 7,
+                          h =31)
+           )
+```
+
 ## Forecast with SARIMA with Covariates
 
 ```{r}
