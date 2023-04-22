@@ -169,6 +169,10 @@ hum_fore <- ts_covariates[,1] %>%
                           K = 7,
                           h =31)
            )
+
+cov_fore <- cbind(hum_fore$mean, tem_fore$mean)
+colnames(cov_fore) <- c("humidity", "temperature")
+str(cov_fore)
 ```
 
 ## Forecast with SARIMA with Covariates
@@ -176,6 +180,6 @@ hum_fore <- ts_covariates[,1] %>%
 ```{r}
 
 arima_four_cov_2011 <- ts_load %>% 
-  auto.arima(xreg = covariates) %>% 
+  auto.arima(xreg = cov_fore) %>% 
   forecast(h = 31)
 ```
