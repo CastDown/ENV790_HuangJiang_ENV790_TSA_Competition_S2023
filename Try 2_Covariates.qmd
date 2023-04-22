@@ -92,6 +92,7 @@ ts_cov_train <- ts_covariates %>% subset(end = 2191-365)
 ts_cov_test <- ts_covariates %>% subset(start = 2191-365+1)
 # use SARIMA with fourier and stl+ets model humidity and check which one has the best performance
 
+## SARIMA
 sarima_hum_model <- auto.arima(ts_cov_train[, 1], 
                                xreg = fourier(ts_cov_train[, 1],
                                               K = 7))
@@ -104,8 +105,16 @@ sarima_hum_perf <- sarima_hum_model %>%
 
 sarima_hum_score <- accuracy(sarima_hum_perf$mean, ts_cov_test[, 1])
 
+## stl+ets 
+stl_hum_perf <- stlf(ts_cov_train[, 1], h = 365)
 
+stl_hum_score <- accuracy(stl_hum_perf$mean, ts_cov_test[, 1])
 
+humidity_scores <- rbind(sarima_hum_score, stl_hum_score)
+row.names(humidity_scores) <- c("SARIMA", "STL")
+
+humidity_scores
+  # SARIMA is better for humidity
 ```
 
 ## Forecast with SARIMA with Covariates
