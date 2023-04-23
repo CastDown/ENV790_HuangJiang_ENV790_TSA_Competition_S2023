@@ -99,17 +99,22 @@ tbats.cov <- tbats(ts_load_train)
 
 fore.tbats.cov <- tbats.cov %>% 
   forecast(h = 365)
+
+# performance
+tbats_score <- accuracy(fore.tbats.cov$mean, ts_load_test)
 ```
 
 ## Compare model performance
 
 ```{r}
 scores_try2 <- performance.stl.four.cov %>% 
-  rbind(performance.arima.four.cov, nn.cov.score)
+  rbind(performance.arima.four.cov, nn.cov.score_30, nn.cov.score_21, tbats_score)
 
 row.names(scores_try2) <- c("STL with Fourier and Covariates",
                             "SARIMA with Fourier and Covariates",
-                            "Neural Network")
+                            "Neural Network 30",
+                            "Neural Network 21",
+                            "TBATS")
 
 best_model_index <- which.min(scores_try2[,"RMSE"])
 cat("The best model by RMSE is:", row.names(scores_try2[best_model_index,]))   
