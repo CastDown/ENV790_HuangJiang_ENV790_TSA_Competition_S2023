@@ -316,9 +316,10 @@ temperature_scores
 ## Forecast Covariates
 
 ```{r}
-# forecast temperature
-tem_fore <- ts_covariates[,2] %>% 
-  auto.arima(xreg = fourier(ts_covariates[,2],
+# forecast temperature, use SARIMA
+tem_fore_sarima <- ts_covariates[,2] %>% 
+  auto.arima(seasonal = FALSE,
+             xreg = fourier(ts_covariates[,2],
                             K = 7)
              ) %>% 
   forecast(h = 59, 
@@ -327,10 +328,17 @@ tem_fore <- ts_covariates[,2] %>%
                           h =59)
            )
 
-# forecast humidity
+# forecast temperature, use TBATS
+tem_fore_tbats <- ts_covariates[,2] %>%
+  tbats() %>% 
+  forecast(h = 59)
+
+# forecast humidity, neural network 11
 hum_fore <- ts_covariates[,1] %>% 
-  auto.arima(xreg = fourier(ts_covariates[,1],
-                            K = 7)
+ nnetar(p = 1,
+        P = 1,
+        xreg = fourier(ts_covariates[,1],
+                       K = 7)
              ) %>% 
   forecast(h = 59, 
            xreg = fourier(ts_covariates[,1],
@@ -341,8 +349,8 @@ hum_fore <- ts_covariates[,1] %>%
 # predict fourier terms 
 future_fourier <- fourier(ts_load, K = c(2, 12), h = 59)
 
-cov_fore <- cbind(hum_fore$mean, tem_fore$mean, future_fourier)
-str(cov_fore)
+cov_fore_sarima <- cbind(hum_fore$mean, tem_fore_sarima$mean, future_fourier)
+cov_fore_tbats <- cbind(hum_fore$mean, tem_fore_tbats$mean, future_fourier)
 ```
 
 ## Forecast with Neural Network with Covariates
@@ -352,14 +360,25 @@ str(cov_fore)
 fourier_full <- fourier(ts_load, K = c(2, 12))
 cov_full <- cbind(ts_combined[,2:3], fourier_full)
 
-# predict! 
-nn_four_cov_2011 <- ts_load %>% 
-  nnetar(p = 2, P = 1, xreg = cov_full) %>% 
+# predict, with neural net work 21 repeat 30 and sarima for tem! 
+nn_four_cov_2011_sarima <- ts_load %>% 
+  nnetar(p = 2, P = 1, 
+         repeats = 30,
+         xreg = cov_full) %>% 
   forecast(h = 59,
-           xreg = cov_fore)
+           xreg = cov_fore_sarima)
+
+write.csv(nn_four_cov_2011_sarima$mean, "./Output/nn_model_sarima_tem.csv", row.names = FALSE)
+
+nn_four_cov_2011_tbats <- ts_load %>% 
+  nnetar(p = 2, P = 1, 
+         repeats = 30,
+         xreg = cov_full) %>% 
+  forecast(h = 59,
+           xreg = cov_fore_tbats)
 
 # save results 
-write.csv(nn_four_cov_2011$mean, "./Output/nn_model.csv", row.names = FALSE)
+write.csv(nn_four_cov_2011_tbats$mean, "./Output/nn_model_tbats_tem.csv", row.names = FALSE)
 
 ```
 
