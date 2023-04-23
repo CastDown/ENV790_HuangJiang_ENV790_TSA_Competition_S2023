@@ -23,6 +23,7 @@ For the second try, we will try to use covariates
 ```{r}
 #| echo: false
 
+plot(ts_load)
 # calculate the foureir terms first
 foureir_term <- ts_combined[, 1] %>% 
   fourier(K = c(2, 12))
@@ -63,14 +64,29 @@ forecast.stl.four.cov <- forecast(stl.four.cov,
 performance.stl.four.cov <- accuracy(ts_load_test, forecast.stl.four.cov$mean)
 ```
 
+3.  try neural network with covariate
+
+    ```{r}
+
+    acf(ts_load, lag.max = 1000)
+    pacf(ts_load, lag.max = 1000)
+    nn.cov <- ts_load_train %>% 
+      nnetar(p = 3, P = 0, xreg = covariates_train)
+
+    fore.nn.cov <- nn.cov %>% forecast(h = 365, xreg = covariates_test)
+
+    nn.cov.score <- accuracy(fore.nn.cov$mean, ts_load_test)
+    ```
+
 ## Compare model performance
 
 ```{r}
 scores_try2 <- performance.stl.four.cov %>% 
-  rbind(performance.arima.four.cov)
+  rbind(performance.arima.four.cov, nn.cov.score)
 
 row.names(scores_try2) <- c("STL with Fourier and Covariates",
-                            "SARIMA with Fourier and Covariates")
+                            "SARIMA with Fourier and Covariates",
+                            "Neural Network")
 
 best_model_index <- which.min(scores_try2[,"RMSE"])
 cat("The best model by RMSE is:", row.names(scores_try2[best_model_index,]))   
