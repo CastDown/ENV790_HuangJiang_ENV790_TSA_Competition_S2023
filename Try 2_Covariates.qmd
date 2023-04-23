@@ -81,7 +81,7 @@ performance.stl.four.cov <- accuracy(ts_load_test, forecast.stl.four.cov$mean)
       nnetar(p = 2, P = 1, repeats = 30, xreg = covariates_train)
 
 
-
+    # find the best repeat value, still 30
     for (i in seq(20, 50, by = 2)){
       nn.cov_21_repeats <- ts_load_train %>% 
       nnetar(p = 2, P = 1, repeats = i, xreg = covariates_train)
@@ -109,6 +109,10 @@ performance.stl.four.cov <- accuracy(ts_load_test, forecast.stl.four.cov$mean)
       rbind(nn.cov.score_30, nn.cov.score_21, nn.cov.score_21_30)
 
     row.names(nn_scores) <- c("31", "30", "21", "21+30")
+
+    best_nn_rmse_index <- which.min(nn_scores[, "RMSE"])
+    best_nn_MAPE_index <- which.min(nn_scores[, "MAPE"])
+
 
     ```
 
