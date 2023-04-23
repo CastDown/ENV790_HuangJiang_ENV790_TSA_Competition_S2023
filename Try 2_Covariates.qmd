@@ -92,10 +92,139 @@ best_model_index <- which.min(scores_try2[,"RMSE"])
 cat("The best model by RMSE is:", row.names(scores_try2[best_model_index,]))   
 ```
 
+## Model and Forecast Covariates
+
+```{r}
+
+# graph two covariates
+plot(ts_combined[, 2:3])
+  # strong seasonality
+
+# retrieve coviariates
+ts_covariates <- ts_combined[, 2:3] %>% 
+  ts(frequency = 365.25, start = c(2005, 1, 1))
+
+ts_cov_train <- ts_covariates %>% subset(end = 2191-365)
+ts_cov_test <- ts_covariates %>% subset(start = 2191-365+1)
+# use SARIMA with fourier and stl+ets model humidity and check which one has the best performance
+
+## SARIMA
+sarima_hum_model <- auto.arima(ts_cov_train[, 1], 
+                               xreg = fourier(ts_cov_train[, 1],
+                                              K = 7))
+sarima_hum_perf <- sarima_hum_model %>% 
+  forecast(h = 365,
+           xreg = fourier(ts_cov_train[, 1], 
+                          K = 7, 
+                          h = 365)
+           )
+
+sarima_hum_score <- accuracy(sarima_hum_perf$mean, ts_cov_test[, 1])
+
+## stl+ets 
+stl_hum_perf <- stlf(ts_cov_train[, 1], h = 365)
+
+stl_hum_score <- accuracy(stl_hum_perf$mean, ts_cov_test[, 1])
+
+humidity_scores <- rbind(sarima_hum_score, stl_hum_score)
+row.names(humidity_scores) <- c("SARIMA", "STL")
+
+humidity_scores
+  # SARIMA is better for humidity
+
+# use SARIMA with fourier and stl+ets model temperature and check which one has the best performance
+
+## SARIMA
+sarima_tem_model <- auto.arima(ts_cov_train[, 2], 
+                               xreg = fourier(ts_cov_train[, 2],
+                                              K = 7))
+sarima_tem_perf <- sarima_tem_model %>% 
+  forecast(h = 365,
+           xreg = fourier(ts_cov_train[, 2], 
+                          K = 7, 
+                          h = 365)
+           )
+
+sarima_tem_score <- accuracy(sarima_tem_perf$mean, ts_cov_test[, 2])
+
+## stl+ets 
+stl_tem_perf <- stlf(ts_cov_train[, 2], h = 365)
+
+stl_tem_score <- accuracy(stl_tem_perf$mean, ts_cov_test[, 2])
+
+temperature_scores <- rbind(sarima_tem_score, stl_tem_score)
+row.names(temperature_scores) <- c("SARIMA", "STL")
+
+temperature_scores
+
+# SARIMA is better
+
+```
+
+## Forecast Covariates
+
+```{r}
+# forecast temperature
+tem_fore <- ts_covariates[,2] %>% 
+  auto.arima(xreg = fourier(ts_covariates[,2],
+                            K = 7)
+             ) %>% 
+  forecast(h = 59, 
+           xreg = fourier(ts_covariates[,2],
+                          K = 7,
+                          h =59)
+           )
+
+# forecast temperature
+hum_fore <- ts_covariates[,1] %>% 
+  auto.arima(xreg = fourier(ts_covariates[,1],
+                            K = 7)
+             ) %>% 
+  forecast(h = 59, 
+           xreg = fourier(ts_covariates[,1],
+                          K = 7,
+                          h =59)
+           )
+
+# predict fourier terms 
+future_fourier <- fourier(ts_load, K = c(2, 12), h = 59)
+
+cov_fore <- cbind(hum_fore$mean, tem_fore$mean, future_fourier)
+str(cov_fore)
+```
+
 ## Forecast with SARIMA with Covariates
 
 ```{r}
+# covariates
+fourier_full <- fourier(ts_load, K = c(2, 12))
+cov_full <- cbind(ts_combined[,2:3], fourier_full)
+
+# predict! 
 arima_four_cov_2011 <- ts_load %>% 
-  auto.arima(xreg = covariates) %>% 
-  forecast(h = 31)
+  auto.arima(xreg = cov_full) %>% 
+  forecast(h = 59,
+           xreg = cov_fore)
+
+# save results 
+write.csv(arima_four_cov_2011$mean, "./Output/second_model.csv", row.names = FALSE)
+
+```
+
+## Forecast with SARIMA with Covariates but no Fourier
+
+```{r}
+
+cov_full_nofour <- cbind(ts_combined[,2:3])
+
+cov_fore_nofour <- cbind(hum_fore$mean, tem_fore$mean)
+
+# predict! 
+arima_cov_2011 <- ts_load %>% 
+  auto.arima(xreg = cov_full_nofour) %>% 
+  forecast(h = 59,
+           xreg = cov_fore_nofour)
+
+# save results 
+write.csv(arima_four_cov_2011$mean, "./Output/third_model.csv", row.names = FALSE)
 ```
