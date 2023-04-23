@@ -159,6 +159,7 @@ ts_cov_test <- ts_covariates %>% subset(start = 2191-365+1)
 
 ## SARIMA
 sarima_hum_model <- auto.arima(ts_cov_train[, 1], 
+                               seasonal = FALSE,
                                xreg = fourier(ts_cov_train[, 1],
                                               K = 7))
 sarima_hum_perf <- sarima_hum_model %>% 
@@ -180,6 +181,15 @@ stl_hum_perf <- stlm(ts_cov_train[, 1], h = 365,
 
 stl_hum_score <- accuracy(stl_hum_perf$mean, ts_cov_test[, 1])
 
+## tbats
+
+tbats_hum_model <- tbats(ts_cov_train[, 1])
+
+tbats_hum_perf <- forecast(tbats_hum_model, h = 365)
+
+tbats_hum_score <- accuracy(tbats_hum_perf$mean, ts_cov_test[, 1])
+
+## find the best model for humidity
 humidity_scores <- rbind(sarima_hum_score, stl_hum_score)
 row.names(humidity_scores) <- c("SARIMA", "STL")
 
