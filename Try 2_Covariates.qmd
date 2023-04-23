@@ -36,10 +36,10 @@ covariates_train <- covariates %>% subset(end = 2191-365)
 covariates_test <- covariates %>% subset(start = 2191-365+1)
 # model with autoarima and covariates
 arima.four.cov <- ts_load_train %>% 
-  auto.arima(xreg = covariates_train)
+  auto.arima(xreg = covariates_train, seasonal = FALSE)
 
 # forecast 2010 with autoarima
-forecast.arima.four.cov <- forecast(arima.four.cov, 
+forecast.arima.four.cov <- forecast(arima.four.cov,
                                     h = 365, 
                                     xreg = covariates_test)
 
@@ -90,6 +90,16 @@ performance.stl.four.cov <- accuracy(ts_load_test, forecast.stl.four.cov$mean)
     row.names(nn_scores) <- c("31", "30", "21")
 
     ```
+
+4.  TBATS model
+
+```{r}
+
+tbats.cov <- tbats(ts_load_train)
+
+fore.tbats.cov <- tbats.cov %>% 
+  forecast(h = 365, xreg = covariates_test)
+```
 
 ## Compare model performance
 
