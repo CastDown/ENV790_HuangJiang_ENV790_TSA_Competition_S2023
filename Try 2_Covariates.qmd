@@ -176,13 +176,8 @@ sarima_hum_perf <- sarima_hum_model %>%
 sarima_hum_score <- accuracy(sarima_hum_perf$mean, ts_cov_test[, 1])
 
 ## stl+ets 
-stl_hum_perf <- stlm(ts_cov_train[, 1], h = 365,
-                     xreg = fourier( ts_cov_train[, 1],
-                                     K = 7,
-                                     h = 365)
-)
+stl_hum_perf <- stlf(ts_cov_train[, 1], h = 365)
                      
-
 stl_hum_score <- accuracy(stl_hum_perf$mean, ts_cov_test[, 1])
 
 ## tbats
@@ -200,7 +195,7 @@ nn_hum_model <- nnetar(ts_cov_train[, 1],
                        xreg = fourier(ts_cov_train[, 1],
                                       K = 7))
 
-nn_hum_perf <- forecast(tbats_hum_model, h = 365,
+nn_hum_perf <- forecast(nn_hum_model, h = 365,
                            xreg = fourier(ts_cov_train[, 1],
                                           h = 365,
                                           K = 7)
