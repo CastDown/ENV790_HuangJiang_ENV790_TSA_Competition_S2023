@@ -98,7 +98,7 @@ performance.stl.four.cov <- accuracy(ts_load_test, forecast.stl.four.cov$mean)
 tbats.cov <- tbats(ts_load_train)
 
 fore.tbats.cov <- tbats.cov %>% 
-  forecast(h = 365, xreg = covariates_test)
+  forecast(h = 365)
 ```
 
 ## Compare model performance
