@@ -67,15 +67,28 @@ performance.stl.four.cov <- accuracy(ts_load_test, forecast.stl.four.cov$mean)
 3.  try neural network with covariate
 
     ```{r}
+    nn.cov_31 <- ts_load_train %>% 
+      nnetar(p = 3, P = 1, xreg = covariates_train)
 
-    acf(ts_load, lag.max = 1000)
-    pacf(ts_load, lag.max = 1000)
-    nn.cov <- ts_load_train %>% 
+    nn.cov_30 <- ts_load_train %>% 
       nnetar(p = 3, P = 0, xreg = covariates_train)
 
-    fore.nn.cov <- nn.cov %>% forecast(h = 365, xreg = covariates_test)
+    nn.cov_21 <- ts_load_train %>% 
+      nnetar(p = 2, P = 1, xreg = covariates_train)
 
-    nn.cov.score <- accuracy(fore.nn.cov$mean, ts_load_test)
+    fore.nn.cov_31 <- nn.cov_31 %>% forecast(h = 365, xreg = covariates_test)
+    fore.nn.cov_30 <- nn.cov_30 %>% forecast(h = 365, xreg = covariates_test)
+    fore.nn.cov_21 <- nn.cov_21 %>% forecast(h = 365, xreg = covariates_test)
+
+    nn.cov.score_31 <- accuracy(fore.nn.cov_31$mean, ts_load_test)
+    nn.cov.score_30 <- accuracy(fore.nn.cov_30$mean, ts_load_test)
+    nn.cov.score_21 <- accuracy(fore.nn.cov_21$mean, ts_load_test)
+
+    nn_scores <- nn.cov.score_31 %>% 
+      rbind(nn.cov.score_30, nn.cov.score_21)
+
+    row.names(nn_scores) <- c("31", "30", "21")
+
     ```
 
 ## Compare model performance
@@ -122,7 +135,12 @@ sarima_hum_perf <- sarima_hum_model %>%
 sarima_hum_score <- accuracy(sarima_hum_perf$mean, ts_cov_test[, 1])
 
 ## stl+ets 
-stl_hum_perf <- stlf(ts_cov_train[, 1], h = 365)
+stl_hum_perf <- stlm(ts_cov_train[, 1], h = 365,
+                     xreg = fourier( ts_cov_train[, 1],
+                                     K = 7,
+                                     h = 365)
+)
+                     
 
 stl_hum_score <- accuracy(stl_hum_perf$mean, ts_cov_test[, 1])
 
@@ -175,7 +193,7 @@ tem_fore <- ts_covariates[,2] %>%
                           h =59)
            )
 
-# forecast temperature
+# forecast humidity
 hum_fore <- ts_covariates[,1] %>% 
   auto.arima(xreg = fourier(ts_covariates[,1],
                             K = 7)
@@ -193,7 +211,7 @@ cov_fore <- cbind(hum_fore$mean, tem_fore$mean, future_fourier)
 str(cov_fore)
 ```
 
-## Forecast with SARIMA with Covariates
+## Forecast with Neural Network with Covariates
 
 ```{r}
 # covariates
@@ -201,13 +219,13 @@ fourier_full <- fourier(ts_load, K = c(2, 12))
 cov_full <- cbind(ts_combined[,2:3], fourier_full)
 
 # predict! 
-arima_four_cov_2011 <- ts_load %>% 
-  auto.arima(xreg = cov_full) %>% 
+nn_four_cov_2011 <- ts_load %>% 
+  nnetar(p = 2, P = 1, xreg = cov_full) %>% 
   forecast(h = 59,
            xreg = cov_fore)
 
 # save results 
-write.csv(arima_four_cov_2011$mean, "./Output/second_model.csv", row.names = FALSE)
+write.csv(nn_four_cov_2011$mean, "./Output/nn_model.csv", row.names = FALSE)
 
 ```
 
