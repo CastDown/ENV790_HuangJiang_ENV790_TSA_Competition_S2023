@@ -188,7 +188,7 @@ tbats_hum_perf <- forecast(tbats_hum_model, h = 365)
 
 tbats_hum_score <- accuracy(tbats_hum_perf$mean, ts_cov_test[, 1])
 
-## neural network
+## neural network 1,1
 nn_hum_model <- nnetar(ts_cov_train[, 1],
                        P = 1, 
                        p = 1,
@@ -203,12 +203,28 @@ nn_hum_perf <- forecast(nn_hum_model, h = 365,
 
 nn_hum_score <- accuracy(nn_hum_perf$mean, ts_cov_test[, 1])
 
+## neural network 2,1
+nn_hum_model_10 <- nnetar(ts_cov_train[, 1],
+                          p = 1,
+                          P = 0,
+                          xreg = fourier(ts_cov_train[, 1],
+                                         K = 7)
+                          )
+
+nn_hum_perf_10 <- forecast(nn_hum_model_10, h = 365,
+                           xreg = fourier(ts_cov_train[, 1],
+                                          h = 365,
+                                          K = 7)
+                           )
+
+nn_hum_score_10 <- accuracy(nn_hum_perf_10$mean, ts_cov_test[, 1])
+
 ## find the best model for humidity
-humidity_scores <- rbind(sarima_hum_score, stl_hum_score, tbats_hum_score, nn_hum_score)
-row.names(humidity_scores) <- c("SARIMA", "STL", "TBATS", "Neural Network")
+humidity_scores <- rbind(sarima_hum_score, stl_hum_score, tbats_hum_score, nn_hum_score, nn_hum_score_10)
+row.names(humidity_scores) <- c("SARIMA", "STL", "TBATS", "Neural Network 11", "Neural Network 10")
 
 humidity_scores
-  # SARIMA is better for humidity
+  # Neural Network 11 is the best for humidity
 
 # use SARIMA with fourier and stl+ets model temperature and check which one has the best performance
 
