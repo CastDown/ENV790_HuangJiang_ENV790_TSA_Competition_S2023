@@ -309,7 +309,7 @@ row.names(temperature_scores) <- c("SARIMA", "STL", "TBATS", "Neural Network 11"
 
 temperature_scores
 
-# SARIMA is better
+# SARIMA and TBATS are the best 2, let's try both
 
 ```
 
