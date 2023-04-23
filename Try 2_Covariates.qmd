@@ -76,18 +76,39 @@ performance.stl.four.cov <- accuracy(ts_load_test, forecast.stl.four.cov$mean)
     nn.cov_21 <- ts_load_train %>% 
       nnetar(p = 2, P = 1, xreg = covariates_train)
 
+    # try to use repeats 
+    nn.cov_21_30 <- ts_load_train %>% 
+      nnetar(p = 2, P = 1, repeats = 30, xreg = covariates_train)
+
+
+
+    for (i in seq(20, 50, by = 2)){
+      nn.cov_21_repeats <- ts_load_train %>% 
+      nnetar(p = 2, P = 1, repeats = i, xreg = covariates_train)
+      
+      fore.nn.cov_21_repeats <- nn.cov_21_repeats %>% 
+        forecast(h = 365, xreg = covariates_test)
+      
+      nn.cov.score_21_repeats <- accuracy(fore.nn.cov_21_repeats$mean, ts_load_test)
+      
+      nn_scores <- nn_scores %>% 
+        rbind(nn.cov.score_21_repeats)
+    }
+
     fore.nn.cov_31 <- nn.cov_31 %>% forecast(h = 365, xreg = covariates_test)
     fore.nn.cov_30 <- nn.cov_30 %>% forecast(h = 365, xreg = covariates_test)
     fore.nn.cov_21 <- nn.cov_21 %>% forecast(h = 365, xreg = covariates_test)
+    fore.nn.cov_21_30 <- nn.cov_21_30 %>% forecast(h = 365, xreg = covariates_test)
 
     nn.cov.score_31 <- accuracy(fore.nn.cov_31$mean, ts_load_test)
     nn.cov.score_30 <- accuracy(fore.nn.cov_30$mean, ts_load_test)
     nn.cov.score_21 <- accuracy(fore.nn.cov_21$mean, ts_load_test)
+    nn.cov.score_21_30 <- accuracy(fore.nn.cov_21_30$mean, ts_load_test)
 
     nn_scores <- nn.cov.score_31 %>% 
-      rbind(nn.cov.score_30, nn.cov.score_21)
+      rbind(nn.cov.score_30, nn.cov.score_21, nn.cov.score_21_30)
 
-    row.names(nn_scores) <- c("31", "30", "21")
+    row.names(nn_scores) <- c("31", "30", "21", "21+30")
 
     ```
 
