@@ -230,6 +230,7 @@ humidity_scores
 
 ## SARIMA
 sarima_tem_model <- auto.arima(ts_cov_train[, 2], 
+                               seasonal = FALSE,
                                xreg = fourier(ts_cov_train[, 2],
                                               K = 7))
 sarima_tem_perf <- sarima_tem_model %>% 
@@ -246,8 +247,65 @@ stl_tem_perf <- stlf(ts_cov_train[, 2], h = 365)
 
 stl_tem_score <- accuracy(stl_tem_perf$mean, ts_cov_test[, 2])
 
-temperature_scores <- rbind(sarima_tem_score, stl_tem_score)
-row.names(temperature_scores) <- c("SARIMA", "STL")
+## tbats
+
+tbats_tem_model <- tbats(ts_cov_train[, 2])
+
+tbats_tem_perf <- forecast(tbats_tem_model, h = 365)
+
+tbats_tem_score <- accuracy(tbats_tem_perf$mean, ts_cov_test[, 2])
+
+## neural network 1,1
+nn_tem_model <- nnetar(ts_cov_train[, 2],
+                       P = 1, 
+                       p = 1,
+                       xreg = fourier(ts_cov_train[, 2],
+                                      K = 7))
+
+nn_tem_perf <- forecast(nn_tem_model, h = 365,
+                           xreg = fourier(ts_cov_train[, 2],
+                                          h = 365,
+                                          K = 7)
+                           )
+
+nn_tem_score <- accuracy(nn_tem_perf$mean, ts_cov_test[, 2])
+
+## neural network 1,0
+nn_tem_model_10 <- nnetar(ts_cov_train[, 2],
+                          p = 1,
+                          P = 0,
+                          xreg = fourier(ts_cov_train[, 2],
+                                         K = 7)
+                          )
+
+nn_tem_perf_10 <- forecast(nn_tem_model_10, h = 365,
+                           xreg = fourier(ts_cov_train[, 2],
+                                          h = 365,
+                                          K = 7)
+                           )
+
+nn_tem_score_10 <- accuracy(nn_tem_perf_10$mean, ts_cov_test[, 2])
+
+## neural network 2,1
+nn_tem_model_21 <- nnetar(ts_cov_train[, 2],
+                          p = 2,
+                          P = 1,
+                          xreg = fourier(ts_cov_train[, 2],
+                                         K = 7)
+                          )
+
+nn_tem_perf_21 <- forecast(nn_tem_model_21, h = 365,
+                           xreg = fourier(ts_cov_train[, 2],
+                                          h = 365,
+                                          K = 7)
+                           )
+
+nn_tem_score_21 <- accuracy(nn_tem_perf_21$mean, ts_cov_test[, 2])
+
+temperature_scores <- rbind(sarima_tem_score, stl_tem_score, tbats_tem_score, 
+                            nn_tem_score, nn_tem_score_10, nn_tem_score_21)
+row.names(temperature_scores) <- c("SARIMA", "STL", "TBATS", "Neural Network 11", 
+                                   "Neural Network 10", "Neural Network 21")
 
 temperature_scores
 
