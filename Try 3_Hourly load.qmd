@@ -8,7 +8,9 @@ editor_options:
   chunk_output_type: console
 ---
 
-Library necessary packages
+## Preparing the data and inspect the patterns
+
+### Library necessary packages
 
 ```{r}
 #| warning: false
@@ -20,9 +22,12 @@ library(zoo)
 library(here)
 library(forecast)
 library(openxlsx)
+library(outliers)
+library(DescTools)
+
 ```
 
-load and process load dataset
+### load and process load dataset
 
 ```{r}
 #| warning: false
@@ -47,13 +52,102 @@ load_processed <- load_original %>%
 summary(load_processed)
 ```
 
-create a time series 
-```{r}
+We didn't consider outliers previously, which could be the potential reason for inaccuracy. So let's try it!
 
-# create a time series with two frequency, weeks (7) and days (365.25).
-# so we can differentiate weekdays from weekends when modeling
-ts_combined <- combined %>%
-  msts(seasonal.periods = c(7, 365.25), start = c(2005, 1, 1))
+### handling the outliers
+
+```{r}
+# inspect the original dataset
+# ts plot
+ggplot(load_processed, aes(x = datetime, y = consumption)) +
+  geom_line() +
+  labs(x = "Date", y = "Consumption", title = "Hourly Energy Consumption")
+# box plot
+ggplot(load_processed, aes(x = datetime, y = consumption)) +
+  geom_boxplot() +
+  labs(x = "Date", y = "Consumption", title = "Hourly Energy Consumption")
+
+# try 1: tsclean() to clear outliers
+# cleaning
+drop_outlier_1 <- load_processed$consumption %>%
+  ts() %>%
+  tsclean() %>%
+  as.vector()
+
+# synthesizing
+clean_load_processed_1 <- load_processed %>%
+  mutate(consumption=drop_outlier_1)
+
+#inspect again: time series plot and box plot
+ggplot(clean_load_processed_1, aes(x = datetime, y = consumption)) +
+  geom_line() +
+  labs(x = "Date", y = "Consumption", title = "Hourly Energy Consumption")
+
+ggplot(clean_load_processed_1, aes(x = datetime, y = consumption)) +
+  geom_boxplot() +
+  labs(x = "Date", y = "Consumption", title = "Hourly Energy Consumption")
+
+#seems that it didn't improve much, but the extremely handful large values were removed
+
+# try 2: Winsorizing (prompt from GPT-4)
+# cleaning
+drop_outlier_2 <- load_processed$consumption %>%
+  as.vector() %>%
+  Winsorize(probs = c(0.001, 0.999))
+
+# synthesizing
+clean_load_processed_2 <- load_processed %>%
+  mutate(consumption=drop_outlier_2)
+
+#inspect again the cleaned dataset: time series plot and box plot
+ggplot(clean_load_processed_2, aes(x = datetime, y = consumption)) +
+  geom_line() +
+  labs(x = "Date", y = "Consumption", title = "Hourly Energy Consumption")
+
+ggplot(clean_load_processed_2, aes(x = datetime, y = consumption)) +
+  geom_boxplot() +
+  labs(x = "Date", y = "Consumption", title = "Hourly Energy Consumption")
+
+#seems that all the "spikes" are not present anymore
+#but not sure if it would be better for this competition
+#I'll leave a line here for future determining
+
+load_processed <- clean_load_processed_1
+rm(clean_load_processed_1,clean_load_processed_2,drop_outlier_1,drop_outlier_2)
+
+```
+
+### inspect seasonal patterns
+
+```{r}
+# previously, we created frequency mainly based on personal judgement
+# in this trial, I'll try to inspect the data first to find the pattern
+
+# given the data now contains 52584 obs.
+# I'll only use the first 1 month data, which contains ~4 weeks data 
+first1month <- load_processed %>%
+  filter(datetime >= "2005-01-01"& datetime < "2005-02-01") 
+
+# time series
+ggplot(first1month, aes(x = datetime, y = consumption)) +
+  geom_line() +
+  labs(x = "Date", y = "Consumption", title = "Hourly Energy Consumption")
+
+# ACF and PACF plot
+par(mfrow=c(1,2))
+Acf(ts(first1month$consumption),main="first month data",lag.max = 24)
+Pacf(ts(first1month$consumption),main="first month data",lag.max = 24)
+
+par(mfrow=c(1,2))
+Acf(ts(first1month$consumption),main="first month data",lag.max = 24*3)
+Pacf(ts(first1month$consumption),main="first month data",lag.max = 24*3)
+
+par(mfrow=c(1,2))
+Acf(ts(first1month$consumption),main="first month data",lag.max = 24*7)
+Pacf(ts(first1month$consumption),main="first month data",lag.max = 24*7)
+
+# Based on the ACF and PACF plot, the most pronounce seasonality occurs daily
+# As shown in the PACF plot, there are almost always negative spikes every 24 hours
 ```
 
 For the first model, we'll only be using the load data.
