@@ -8,7 +8,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-## Preparing the data and inspect the patterns
+## Data preparation and inspection
 
 ### Library necessary packages
 
@@ -150,26 +150,27 @@ Pacf(ts(first1month$consumption),main="first month data",lag.max = 24*7)
 # As shown in the PACF plot, there are almost always negative spikes every 24 hours
 ```
 
-For the first model, we'll only be using the load data.
-
+###create time series 
 ```{r}
-#create a time series only for the load data
-ts_load <- combined[,1] %>%
-  msts(seasonal.periods = c(7, 365.25), start = c(2005, 1, 1))
+ts_load <- load_processed$consumption %>%
+  msts(seasonal.periods = c(24, 365.25*24), start = c(2005, 1, 1,0))
 
 #decompose the data and plot
 ts_load %>% mstl() %>%
   autoplot()
 
 #create a subset for training purpose
-n_forecast = 365
+n_forecast = 365*24
 ts_load_train <- subset(ts_load, end = length(ts_load)-n_forecast)
 
 #create a subset for testing purpose
 ts_load_test <- subset(ts_load, start = length(ts_load)-n_forecast + 1)
 ```
 
-#Model 1: STL+ETS model Fit the model and check accuracy for further comparison
+
+##Model fitting and selection
+
+###Model 1: STL+ETS model Fit the model and check accuracy for further comparison
 
 ```{r}
 #Fit and forecast STL + ETS model to data
@@ -192,7 +193,7 @@ Produce the output
 
 ```{r}
 #forecast, only from Jan 1 to Feb 28, 2011
-Model1_for <- stlf(ts_load,h=59)
+Model1_for <- stlf(ts_load,h=59*24)
 
 #create the date sequence
 date_for <- seq(as.Date("2011-01-01"), length.out = 59, by = "day")
@@ -207,7 +208,7 @@ Model1_output$load <- round(Model1_output$load, 0)
 write.csv(Model1_output, "./Output/first_model.csv", row.names = FALSE)
 ```
 
-#Model 1.1: Try including just one seasonal period, i.e., 365.25 \*Comment from Kassie: 1) I tried only 7, and it didn't work very well, so I changed to only try 365.25 2) I followed Luana's code to compare RMSE just for convenience, but we could change to other metrics later
+####Model 1.1: Try including just one seasonal period, i.e., 365.25 \*Comment from Kassie: 1) I tried only 7, and it didn't work very well, so I changed to only try 365.25 2) I followed Luana's code to compare RMSE just for convenience, but we could change to other metrics later
 
 ```{r}
 #create a time series only for the load data
@@ -260,7 +261,7 @@ cat("The best model by RMSE is:", row.names(scores[best_model_index,]))
 
 ```
 
-#Model 2: ARIMA + FOURIER terms Fit the model and check accuracy for further comparison
+###Model 2: ARIMA + FOURIER terms Fit the model and check accuracy for further comparison
 
 ```{r}
 #Fit ARIMA model with fourier terms as exogenous regressors
