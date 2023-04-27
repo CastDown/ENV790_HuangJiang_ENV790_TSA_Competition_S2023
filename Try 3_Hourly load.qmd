@@ -170,7 +170,9 @@ ts_load_test <- subset(ts_load, start = length(ts_load)-n_forecast + 1)
 
 ##Model fitting and selection
 
-###Model 1: STL+ETS model Fit the model and check accuracy for further comparison
+###Model 1: STL+ETS model 
+
+####Fit the model and check accuracy for further comparison
 
 ```{r}
 #Fit and forecast STL + ETS model to data
@@ -189,7 +191,7 @@ Model1_scores <- accuracy(ETS_fit$mean,ts_load_test)
 
 ```
 
-Produce the output
+####Produce the output
 
 ```{r}
 # Hourly forecast
@@ -217,6 +219,18 @@ Model1_output$load <- round(Model1_output$load, 0)
 
 # Write the data frame to a csv file
 write.csv(Model1_output, "./Output/Try3_model1.csv", row.names = FALSE)
+```
+
+####Check accuracy
+```{r}
+#set up variables to store accuracy (only for the first time)
+scores <- data.frame()
+model_names <- vector()
+
+#Adding to accuracy summary
+scores <- rbind(scores,Model1_scores)
+model_names <- c(model_names,"STL+ETS")
+row.names(scores) <- model_names
 ```
 
 ####Model 1.1: Try including just one seasonal period, i.e., 365.25
@@ -251,24 +265,29 @@ autoplot(ts_load_1.1) +
 
 ```
 
-###Model 2: ARIMA + FOURIER terms Fit the model and check accuracy for further comparison
+###Model 2: ARIMA + FOURIER terms 
+####Fit the model and check accuracy for further comparison
 
 ```{r}
 #Fit ARIMA model with fourier terms as exogenous regressors
-#TBD:if lambda=0 here
-ARIMA_Four_model <- auto.arima(ts_load_train, 
-                             seasonal=FALSE, 
-                             lambda=0,
-                             xreg=fourier(ts_load_train, 
-                                          K=c(2,12))
-                             )
+four_terms <- fourier(ts_load_train, K = c(2, 12))
+
+# Check for any issues in the Fourier terms
+any(is.na(four_terms))
+any(is.nan(four_terms))
+any(is.infinite(four_terms))
+
+# Fit the ARIMA model with Fourier terms
+ARIMA_Four_model <- auto.arima(ts_load_train,
+                               seasonal = FALSE,
+                               xreg = four_terms)
 
 #Forecast with ARIMA fit
 #also need to specify h for fourier terms
 ARIMA_Four_fit <- forecast(ARIMA_Four_model,
                            xreg=fourier(ts_load_train,
                                         K=c(2,12),
-                                        h=365),
+                                        h=365*24),
                            h=365
                            ) 
 
@@ -277,25 +296,23 @@ autoplot(ARIMA_Four_fit) + ylab("Active Power")
 
 #Plot model + observed data
 autoplot(ts_load) +
+  autolayer(ETS_fit, series="STL + ETS",PI=FALSE) +
   autolayer(ARIMA_Four_fit, series="ARIMA_FOURIER",PI=FALSE) +
   ylab("Active Power")
 
 
 #Check accuracy
-Model2_scores <- accuracy(ARIMA_Four_fit$mean,ts_load_test)
+Model2_scores <- accuracy(ARIMA_Four_fit$mean,ts_load_test) %>%
+  as.data.frame()
 
 ```
 
-\*Note from Kassie: I asked GPT-4 what does lambda part do, and here's some helpful comment from it: 1) By setting lambda = 0, you are telling the auto.arima() function to use the log-transformed data when fitting the ARIMA model. 2) This can help stabilize the variance and make the model more accurate, especially when dealing with data that has a multiplicative seasonality or an increasing trend. Still, I'm unsure if it would be better for us to include that and if so, what shall be the value. Maybe try later for 2.x models!
-
-Produce the output
+####Produce the output
 
 ```{r}
 #forecast (2 steps)
-#TBD: update the model with whole data, or still using the fitted model?
 Model2 <- auto.arima(ts_load, 
-                     seasonal=FALSE, 
-                             lambda=0,
+                     seasonal=FALSE,
                              xreg=fourier(ts_load, 
                                           K=c(2,12))
                              )
@@ -303,46 +320,45 @@ Model2 <- auto.arima(ts_load,
 Model2_for <- forecast(Model2,
                        xreg=fourier(ts_load,
                                     K=c(2,12),
-                                    h=365),
-                           h=365
+                                    h=59*24),
+                           h=59*24
                            ) 
 
-Model2_for_test <- forecast(Model2,
-                       lambda = Model2$lambda,
-                       xreg=fourier(ts_load,
-                                    K=c(2,12),
-                                    h=365),
-                           h=365
-                           ) 
+# Convert the hourly forecast to a data frame
+Model2_hourly <- data.frame(hour = 1:(59 * 24), forecast = as.vector(Model2_for$mean))
+
+# Calculate the daily mean forecast
+Model2_daily <- Model2_hourly %>%
+  mutate(day = ceiling(hour / 24)) %>%
+  group_by(day) %>%
+  summarise(daily_mean = mean(forecast))
+
+rm(Model2_hourly)
 
 #create the date sequence
-date_for <- seq(as.Date("2011-01-01"), length.out = n_forecast, by = "day")
+date_for <- seq(as.Date("2011-01-01"), length.out = 59, by = "day")
 
 # Create a data frame with date and load columns
-Model2_output <- data.frame(date = date_for, load = Model2_for$mean)
+Model2_output <- data.frame(date = date_for, load = Model2_daily$daily_mean)
 
-# Write the data frame to a CSV file
-write.csv(forecast_result, "./Output/first_model.csv", row.names = FALSE)
+# round the number since Kaggle requires only integers
+Model2_output$load <- round(Model2_output$load, 0)
 
+# Write the data frame to a csv file
+write.csv(Model2_output, "./Output/Try3_model2.csv", row.names = FALSE)
 ```
 
-\*Note from Kassie: I feel it's a bit strange to fit another ARIMA again here... Maybe check with Luana later
+####Check accuracy
+```{r}
+#Adding to accuracy summary
+scores <- rbind(scores,Model2_scores)
+model_names <- c(model_names,"ARIMA_FOURIER")
+row.names(scores) <- model_names
+```
 
-Compare all the models so far
+
+###Compare accuracy
 
 ```{r}
-
-#Adding to the scores table
-scores <- scores %>%
-  rbind(Model2_scores)
-
-#change the name and print the table
-n_models <- nrow(scores)
-row.names(scores) <- c(row.names(scores)[1:(n_models-1)],"ARIMA_FOURIER")
 print(scores)
-
-#choose model with lowest RMSE
-#MAYBE
-best_model_index <- which.min(scores[,"RMSE"])
-cat("The best model by RMSE is:", row.names(scores[best_model_index,]))   
 ```
